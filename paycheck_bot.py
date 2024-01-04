@@ -1,4 +1,5 @@
 import discord
+import config
 from paycheck_db import Database
 from datetime import date
 from datetime import timedelta
@@ -170,4 +171,4 @@ if __name__ == '__main__':
             else: #Print embed of possible commands
                 await bot_embed.send_embed(message)
 
-    client.run('MTE4NzM2NjA1Mjk0NzA0MjMxNA.GuLCNA.CM_yVXxT7bgTgF9aHYe9xRlhZN1wuo6hPQRs-s')
+    client.run(config.api)
