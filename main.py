@@ -99,7 +99,6 @@ i.e. (7.5) or (20/02/1991 7.5) or (20 7.5) or (20/02 7.5)''')
             
             if len(check) == 4:
                 if ((index == 0 or index == 1) and len(comp) != 2) or (index == 2 and len(comp) != 4):
-                    print(len(comp))
                     print("\nError in input")
                     self.add_hours()
 
@@ -115,7 +114,6 @@ i.e. (7.5) or (20/02/1991 7.5) or (20 7.5) or (20/02 7.5)''')
                 database.add_record(self.today.strftime("%Y/%m/%d"), check[0], self.hourly_wage)
                 print("\nToday's hours successfully added")
                 
-
             else:
                 print("\nError, an entry for today already exists")
             

@@ -24,8 +24,20 @@ class Database:
         self.cur.execute('CREATE TABLE user_ids (id INTEGER, hourly_wage REAL, kiwisaver REAL, student loan INTEGER)')
         self.con.commit()
 
+    def add_user(self, id, wage, kiwisaver, student_loan):
+        """Adds the user into the user_ids table in the database to register the user into the system
+        
+        :param id: the user's discord id from the API
+        :param wage: the user's hourly wage
+        :param kiwisaver: the user's kiwisaver contributions
+        :param student_loan: boolean for whether the user has a student_loan to repay or not
+        """
+        self.cur.execute('INSERT INTO user_ids VALUES (?, ?, ?, ?)', (id, wage, kiwisaver, student_loan))
+        self.con.commit()
+
     def add_record(self, date, hours, wage, id):
         """Adds the date and hours from the main program into the database which should already be formatted
+
             :param hours: double containing the amount of hours worked
             :param date: date in the format YYYY/MM/DD for easier sorting
         """
@@ -41,6 +53,7 @@ class Database:
     def find_records(self, start_date, end_date, id):
         """Searches for the dates between a given range in the database, works as dates are stored in the
             YYYY/MM/DD format which happens to work alphabetically
+
             :param start_date: the earliest date in the requested search range
             :param end_date: the latest date in the requested search range
             :param single_date: if the user is only searching for a specific date, default value = False
@@ -50,6 +63,7 @@ class Database:
     
     def delete_record(self, date, id):
         """Will search for aand delete the row corresponding to the given date if the row exists
+
             :param date: the requested date to delete
         """
         self.cur.execute(f'DELETE FROM work_hours WHERE date = "{date}" AND id = {id}')
