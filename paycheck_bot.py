@@ -225,6 +225,13 @@ class Register:
             self.input_error = "Please enter yes (y) or no (n) for whether you have any active student loan repayments"
             return
         
+        student_loan_map = {'y': 1,
+                            'yes': 1,
+                            'n': 0,
+                            'no': 0}
+        
+        user_input[2] = student_loan_map[2]
+        
         self.wage, self.kiwisaver, self.student_loan = user_input
 
 class ChangeDetail:
