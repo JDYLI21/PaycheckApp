@@ -65,7 +65,7 @@ class AddHour:
             the check is satisfactory
         """
         # Truncates the bot command portion of the input and splits into list based on delimiters "/" and " "
-        self.parsed_input = resplit('/|\s', self.user_input[7:])
+        self.parsed_input = resplit('/|\s', self.user_input[5:])
 
         """Check for correct formatting of either
             hours
@@ -79,26 +79,20 @@ class AddHour:
                 return
             
             if len(self.parsed_input) == 4:
-                if ((index == 0 or index == 1) and len(comp) != 2) or (index == 2 and len(comp) != 4):
+                if ((index == 0 or index == 1) and (len(comp) != 2) and len(comp) != 1) or (index == 2 and len(comp) != 4):
                     self.input_error = "Please enter accordingly to the format DD/MM/YYYY hours"
                     return
                 
             elif len(self.parsed_input) == 2 or len(self.parsed_input) == 3:
-                if index != len(self.parsed_input) - 1 and len(comp) != 2:
+                if index != len(self.parsed_input) - 1 and (len(comp) != 2 and len(comp) != 1):
                     self.input_error = "Please enter accordingly to the format DD/MM hours"
                     return
                 
-        if len(self.parsed_input) == 1: # Checks for if the user wants to enter an entry for today
-            self.today_check = True
+        self.parsed_input = [f'{int(num):02d}' if num != self.parsed_input[-1] and len(num) != 4 else num for num in self.parsed_input]
             
     def add(self):
-        if self.today_check: ######################################################################### ERROR HERE IN WRONG HOURS ENTERED
-            self.date = f'{self.today.year}/{self.today.month:02d}/{self.today.day:02d}'
-            self.hours = self.parsed_input[0]
-            return
-        
         # Adding in the missing months to the user's input
-        entries = [str(self.today.year), f'{self.today.month:02d}']
+        entries = [str(self.today.year), f'{self.today.month:02d}', f'{self.today.day:02d}']
         # Extends the parsed list to have 4 elements for day, month, year, hours
         [self.parsed_input.extend([self.parsed_input[-1]]) for i in range(4 - len(self.parsed_input))] 
         for index, comp in enumerate(self.parsed_input): 
@@ -106,6 +100,7 @@ class AddHour:
             # the current day, month, or year
             if comp == self.parsed_input[-1] and index != 3:
                 self.parsed_input[index] = entries[2 - index]
+        self.date = f'{self.parsed_input[2]}/{self.parsed_input[1]}/{self.parsed_input[0]}'
         self.hours = self.parsed_input[3]
         
     def __str__(self):
@@ -321,14 +316,15 @@ if __name__ == '__main__':
                 if add_instance.input_error:
                     await feedback.send_error_embed(message, add_instance.input_error)
 
-                add_instance.add()
-
-                if not database.find_records(add_instance.date, add_instance.date, user[0][0]):
-                    database.add_record(add_instance.date, add_instance.hours, user[0][1], user[0][0])
-                    await feedback.send_success_embed(message, add_instance)
-                ##################################### ERROR HERE WHEN ADDING PROMPTING DD HOUR, GOES TO AN ENTRY ALREADY EXISTS
                 else:
-                    await feedback.send_error_embed(message, "An entry for this date already exists")
+                    add_instance.add()
+
+                    if not database.find_records(add_instance.date, add_instance.date, user[0][0]):
+                        database.add_record(add_instance.date, add_instance.hours, user[0][1], user[0][0])
+                        await feedback.send_success_embed(message, add_instance)
+                    
+                    else:
+                        await feedback.send_error_embed(message, "An entry for this date already exists")
 
             elif message.content.startswith('.p w'):
                 pass
