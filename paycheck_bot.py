@@ -31,6 +31,9 @@ tax_bracket = {0: 0.105,
                48001: 0.3,
                70001: 0.33,
                180000: 0.39}
+acc_levy = 0.0153
+
+student_loan_threshold = 22828
 
 ietc_threshold = [24000, 44000, 10] #min, max, $ per week
 ietc_over_threshold = [44001, 48000, 0.13] #min, max, $ reduced every week
@@ -112,13 +115,85 @@ class AddHour:
                 return f"{self.parsed_input[0]} {months[self.parsed_input[1]]} {self.parsed_input[2]}'s hours were added successfully"
         
 class ViewHours:
-    pass
+    def __init__(self):
+        pass
+
+    def parse(self):
+        pass
+
+    def __str__(self, calc):
+        pass
 
 class RemoveHour:
     pass
 
 class PayCalc:
-    pass
+    """Calculator for pay according to the tax brackets in NZ
+        Will calculate all the variables and passed on to the necessary classes in the main routine
+    """
+    def __init__(self, hour, frequency, wage, kiwisaver, student_loan):
+        """:param hour: amount of hours worked
+            :param frequency: frequency of pay (w, f, m, a)
+            :param wage: user's hourly wage
+            :param kiwisaver: % contribution from user towards their kiwisaver
+            :param student_loan: whether the user has a student loan to repay or not
+        """
+        self.hours = hour
+        self.frequency = frequency
+        self.wage = wage
+        self.kiwisaver_rate = kiwisaver
+        self.student_loan = student_loan
+
+        self.estimated_annual_earning = None
+
+        # Parameters that are accessed outside of the class
+        self.total_pay = None
+        # Student loan pay
+        self.kiwisaver = None
+        self.tax_rate = 0
+        self.taxed_amount = None
+        self.ietc = 0
+        self.take_home = None
+
+    def calc(self):
+        frequency_map = {"w": 52,
+                           "f": 26,
+                           "m": 12,
+                           "a": 1}
+
+        self.total_pay = self.hours * self.wage
+
+        self.estimated_annual_earning = self.total_pay * frequency_map[self.frequency]
+
+        self.student_loan = .12 * (self.estimated_annual_earning - student_loan_threshold) / frequency_map[self.frequency] \
+        if self.estimated_annual_earning > student_loan_threshold and self.student_loan else 0
+
+        self.kiwisaver = self.total_pay * self.kiwisaver_rate
+
+        tax_threshold_count = sum(1 for bracket in list(tax_bracket.keys()) if self.estimated_annual_earning > bracket)
+        for bracket in range(tax_threshold_count - 1): # Adds in the tax bracket percentage of every bracket except the highest applicable one
+            self.tax_rate += (list(self.tax_bracket.keys())[bracket + 1] - 1) / self.estimated_annual_earning * (list(self.tax_bracket.values())[bracket] + acc_levy)
+        self.tax_rate += (self.estimated_annual_earning - list(tax_bracket.keys())[tax_threshold_count - 1]) / self.estimated_annual_earning * \
+                            (list(tax_bracket.values())[tax_threshold_count - 1] + acc_levy) # Adds in the last tax bracket percentage
+        
+        if ietc_threshold[0] < self.estimated_annual_earning < ietc_threshold[1]:
+            self.ietc += 520
+        elif ietc_over_threshold[0] < self.estimated_annual_earning < ietc_over_threshold[1]:
+            self.ietc -= (self.estimated_annual_earning - ietc_over_threshold[0]) * 0.13
+        self.ietc /= frequency_map[self.frequency]
+
+        self.taxed_amount = self.total_pay * self.tax_rate
+
+        self.take_home_ = self.total_pay * (1 - self.tax_rate) - self.student_loan - self.kiwisaver + self.ietc
+
+class Register:
+    def __init__(self):
+        pass
+
+    async def prompt(self):
+        pass
+
+    
 
 class PossibleCommands:
     """Embed of all the possible commands for this bot
@@ -186,15 +261,15 @@ e.g.
         """
         self.embed.set_author(name = message.author.display_name, icon_url = message.author.display_avatar)
         self.embed.description = """To use the calculator, prefix your command with .p calc, followed by the following parameters
-.p calc hours (n) | frequency of pay (weekly, fornightly, **monthly**) | kiwisaver (**3%**. n%) | student_loan (n, **y**) - bold indicates default 
+.p calc hours (num hours) | frequency of pay (weekly (w), fornightly (f), **monthly** (m)), annually (a) | kiwisaver (**3%**. contribution %) | student_loan (n, **y**) - bold indicates default 
 e.g.
 .p calc 7.5 - defaults to monthly pay, kiwisaver rate of 3%, with student loans to repay
-.p calc 7.5 monthly - defaults to kiwisaver rate of 3% with student loans to repay
-.p calc 7.5 monthly 3 - defaults to student loans to repay
+.p calc 7.5 m - defaults to kiwisaver rate of 3% with student loans to repay
+.p calc 7.5 m 3 - defaults to student loans to repay
 ----------
-It is also possible to skip parameters to default by putting d for the parameter
+It is also possible to skip parameters and not enter the parameters in the order stated above (note however, hours has to be first)
 e.g.
-.p calc 7.5 d d n - 7.5 hours with monthly pay, kiwisaver rate of 3%, and no student loans to repay"""
+.p calc 7.5 3 n m - 7.5 hours with monthly pay, kiwisaver rate of 3%, and no student loans to repay"""
         await message.channel.send(embed=self.embed)
 
     async def send_embed(self, message):
