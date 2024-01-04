@@ -156,6 +156,8 @@ class PayCalc:
         self.take_home = None
 
     def calc(self):
+        """Calculates each component of the pay required for viewing and updates the variables with it
+        """
         frequency_map = {"w": 52,
                            "f": 26,
                            "m": 12,
@@ -187,13 +189,47 @@ class PayCalc:
         self.take_home_ = self.total_pay * (1 - self.tax_rate) - self.student_loan - self.kiwisaver + self.ietc
 
 class Register:
-    def __init__(self):
-        pass
+    """This class will deal with the user's registration into the database by parsing the user's input and 
+        havings its parameteres passed onto the relevant database function
+    """
+    def __init__(self, message):
+        """:param message: message as received from the API
+        """
+        self.message = message
 
-    async def prompt(self):
-        pass
+        # Parameteres to be accessed outside of class
+        self.wage = None
+        self.kiwisaver = None
+        self.student_loan = None
 
-    
+        self.input_error = None
+
+    def parse(self):
+        """Checks if user's input is valid, going through with the registration when it is
+        """
+        user_input = resplit('\s', self.message.content[5:])
+
+        if len(user_input) != 3:
+            self.input_error = "Please enter in all/only the 3 required user details"
+            return
+        
+        if not user_input[0].replace('.', '').isnumeric():
+            self.input_error = "Please enter only numerals and periods for your hourly wage"
+            return
+        
+        if not user_input[1].isnumeric():
+            self.input_error = "Please only enter numerals for your kiwisaver contributions (no % signs)"
+            return
+        
+        if user_input[2] not in ['y', 'n', 'yes', 'no']:
+            self.input_error = "Please enter yes (y) or no (n) for whether you have any active student loan repayments"
+            return
+        
+        self.wage, self.kiwisaver, self.student_loan = user_input
+
+class ChangeDetail:
+    """This class will deal with the user's desire to change their details in the database, parsing the user's input, then
+        returning the relevant changes to be passed onto the database"""
 
 class PossibleCommands:
     """Embed of all the possible commands for this bot
@@ -295,6 +331,14 @@ Leave blank for today, and please note to type the specific date otherwise
 .p d ? to view examples for commands to delete records""")
         self.embed.add_field(name = "Calculator", inline = False, value = """For commands to use the calculator, type
 .p calc ?""")
+        self.embed.add_field(name = "To Change your Details", inline = False, value = """Please prefix your command with .p c, followed by the number of the detail you would like to change, then, its new value
+1. hourly wage
+2. kiwisaver contributions
+3. active student loan repayments
+e.g. 
+1 23.5 
+2 0
+3 n""")
         await message.channel.send(embed=self.embed)
         self.embed.clear_fields()
 
@@ -336,7 +380,7 @@ class FeedbackEmbed:
         """
         self.embed.title = 'New User'
         self.embed.description = 'Please register your info to use the paycheck app'
-        self.embed.color = discord.Color.red()
+        self.embed.color = discord.Color.light_grey()
         self.embed.set_author(name = message.author.display_name, icon_url = message.author.display_avatar)
         self.embed.add_field(name = 'To Register your Details', inline = False, 
                              value = """Please type the prefix .p r, followed by your hourly wage, kiwisaver contributions, and whether you have any student loans or not
@@ -347,6 +391,7 @@ e.g.
 .p r 23.5 3 y
 .p r 23.5 0 n""")
         await message.channel.send(embed=self.embed)
+        self.embed.clear_fields()
 
 if __name__ == '__main__':
     database = Database()
@@ -372,20 +417,34 @@ if __name__ == '__main__':
         
         if message.content.startswith('.p'):
             user = database.find_user(message.author.id)
-            if not user and message.content.startswith('.p r'):
-                pass # WORK ON THIS RN
+            if not user and message.content.startswith('.p r') and len(message.content) > 4: # If user has entered the register command correctly
+                register = Register(message)
+                register.parse()
+                if register.input_error: # Send the user's input error
+                    await feedback.send_error_embed(message, register.input_error)
 
-            elif not user:
+                else: # Register user
+                    database.add_user(message.author.id, register.wage, register.kiwisaver, register.student_loan)
+                    await feedback.send_success_embed(message, 'You are now registered with the Paycheck App!')
+                    await bot_embed.send_embed(message)
+
+            elif not user: # If user has not entered register command, prompt them the new user embed
                 await feedback.new_user_embed(message)
 
-            if message.content in ['.p a ?', '.p v ?', '.p d ?', '.p calc ?']:
-                cmd_map = {'.p a ?': bot_embed.send_embed_a,
-                           '.p v ?': bot_embed.send_embed_v,
-                           '.p d ?': bot_embed.send_embed_d,
-                           '.p calc ?': bot_embed.send_embed_calc}
+            elif message.content in ['.p a', '.p a ?', '.p v', '.p v ?', '.p d', '.p d ?', '.p calc ?']: # Help
+                cmd_map = {'.p a': bot_embed.send_embed_a,
+                        '.p a ?': bot_embed.send_embed_a,
+                        '.p v': bot_embed.send_embed_v,
+                        '.p v ?': bot_embed.send_embed_v,
+                        '.p d': bot_embed.send_embed_d,
+                        '.p d ?': bot_embed.send_embed_d,
+                        '.p calc ?': bot_embed.send_embed_calc}
                 await cmd_map[message.content](message)
 
-            elif message.content.startswith('.p a'):
+            elif message.content.startswith('.p c'): # Change Details
+                pass
+
+            elif message.content.startswith('.p a'): # Add Hours
                 add_instance = AddHour(user[0][1], user[0][2], user[0][3], message)
                 add_instance.parse()
                 if add_instance.input_error:
@@ -401,10 +460,10 @@ if __name__ == '__main__':
                     else:
                         await feedback.send_error_embed(message, "An entry for this date already exists")
 
-            elif message.content.startswith('.p w'):
+            elif message.content.startswith('.p v'): # View Hours
                 pass
 
-            elif message.content.startswith('.p r'):
+            elif message.content.startswith('.p d'): # Delete Hours
                 pass
             
             else: #Print embed of possible commands
